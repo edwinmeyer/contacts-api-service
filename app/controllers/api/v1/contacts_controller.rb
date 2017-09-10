@@ -3,9 +3,7 @@ class Api::V1::ContactsController < ApplicationController
 
   # GET /contacts
   def index
-    @contacts = [
-        { first_name: 'Abraham', last_name: 'Lincoln', phone: '555-555-5551', email: 'abraham_lincoln@example.com' }
-    ]
+    @contacts = Contact.order('last_name, first_name')
     render json: @contacts
   end
 

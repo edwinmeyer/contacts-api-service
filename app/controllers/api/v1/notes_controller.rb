@@ -3,8 +3,7 @@ class Api::V1::NotesController < ApplicationController
 
   # GET /notes
   def index
-    @notes = Note.all
-
+    @notes = Note.order('id')
     render json: @notes
   end
 
