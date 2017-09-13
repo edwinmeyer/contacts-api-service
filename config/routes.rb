@@ -12,4 +12,7 @@ Rails.application.routes.draw do
       resources :contacts
     end
   end
+
+  # Must be the last route
+  match '*unknown_path', :to => 'application#routing_error', via: :all
 end
