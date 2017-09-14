@@ -3,8 +3,8 @@ class Api::V1::NotesController < ApplicationController
 
   # GET /notes
   def index
-    @notes = Note.order('id')
-    render json: @notes
+    notes = Note.order('id')
+    render json: notes
   end
 
   # GET /notes/1
@@ -14,22 +14,14 @@ class Api::V1::NotesController < ApplicationController
 
   # POST /notes
   def create
-    @note = Note.new(note_params)
-
-    if @note.save
-      render json: @note, status: :created, location: @note
-    else
-      render json: @note.errors, status: :unprocessable_entity
-    end
+    note = Note.new(note_params)
+    render json: note, status: :created if note.save!
   end
 
   # PATCH/PUT /notes/1
   def update
-    if @note.update(note_params)
-      render json: @note
-    else
-      render json: @note.errors, status: :unprocessable_entity
-    end
+    @note.update!(note_params)
+    render json: @note, status: :ok
   end
 
   # DELETE /notes/1

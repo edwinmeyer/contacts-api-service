@@ -14,22 +14,14 @@ class Api::V1::ContactsController < ApplicationController
 
   # POST /contacts
   def create
-    @contact = Contact.new(contact_params)
-
-    if @contact.save
-      render json: @contact, status: :created, location: @contact
-    else
-      render json: @contact.errors, status: :unprocessable_entity
-    end
+    contact = Contact.new(contact_params)
+    render json: contact, status: :created if contact.save!
   end
 
   # PATCH/PUT /contacts/1
   def update
-    if @contact.update(contact_params)
-      render json: @contact
-    else
-      render json: @contact.errors, status: :unprocessable_entity
-    end
+    @contact.update!(contact_params)
+    render json: @contact, status: :ok
   end
 
   # DELETE /contacts/1
