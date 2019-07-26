@@ -10,12 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170910022334) do
+ActiveRecord::Schema.define(version: 2019_07_21_042615) do
 
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
-
-  create_table "contacts", force: :cascade do |t|
+  create_table "contacts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "first_name"
     t.string "last_name"
     t.string "phone"
@@ -24,7 +21,7 @@ ActiveRecord::Schema.define(version: 20170910022334) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "notes", force: :cascade do |t|
+  create_table "notes", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.datetime "note_date"
     t.text "content"
     t.bigint "contact_id"

@@ -1,6 +1,7 @@
 # Contacts API Service &ndash; A Ruby on Rails 5 Sample Application 
-## with Rbenv, Postgres, JSON, Active Model Serializers, and Git
+## with Rbenv, Postgres or MySQL, JSON, Active Model Serializers, and Git
 ### *Edwin W. Meyer*
+### Updated July 20-23, 2019
 
 ## Background
 *Contacts API Service* is a sample Ruby on Rails 5 'api-only' application that maintains a simple contact list and serves it to an API client. Its goal is to build in a fairly concise step-wise fashion a multi-featured  API structure. The problem domain demonstrates basic API features &ndash; it is not intended to be a practical contact list application. 
@@ -8,6 +9,7 @@
 - No RSpec or other tests are described. While repeatable automated testing is an important part of application development, no tests are included here to avoid distracting from main line of the tutorial. Instead, the curl command is used to generate requests for manual testing.
 - Similarly, features that are an important part of any practical application but which are not directly related to API features are omitted. For example, only a few model validations are implemented.
 - Setting up the basic Rails application environment is not covered here. Refer to "Basic Setup for Ruby on Rails 5 Development" at https://github.com/edwinmeyer/rails-5-setup for this.
+- The package versions listed were current as of July 20, 2019. Later versions of Rails or Ruby may have different behaviors.
 
 ## Documentation Conventions
 Except where specially noted:
@@ -28,27 +30,35 @@ $ cd contacts-api-service # further work done inside project directory
 
 ***Rbenv Setup for App / Install Rails***
 ```bash
-# Create a .ruby-version file that specifies the Ruby version 2.4.1 to be used
-$ rbenv local 2.4.1 
-# Install latest version of Rails into <home dir>/rbenv/versions/2.4.1/bin/rails
+# Create a .ruby-version file that specifies the Ruby version 2.6.3 to be used
+$ rbenv local 2.6.3 
+# Install latest version of Rails into <home dir>/rbenv/versions/2.6.3/bin/rails
 $ gem install rails  
-$ rails -v --> Rails 5.1.4 # released 9/7/2017
+$ rails -v --> Rails 5.2.3  # released March 28, 2019
 ```
 
-***Create Rails App Structure that Uses Postgres***  
+***Create Rails App Structure*** 
 Perform "rails new" with these options:  
 - "--api" to create a headless API Rails app that omits support for HTML output
-- "-d postgresql" to use Postgres rather than the default MySQL, and
+- "-d postgresql" or "-d mysql" to use Postgres or MySQL respectively rather than the default MySQL, and
 - "-T" (optional) to omit unit/mini-test file generation if you want to instead use Rspec.  
 
-*Note:* While performing tests is a best practice, it is not covered here. 
+_Note:_ While performing tests is a best practice, it is not covered here. 
+To use Postgres as the database server:
 ```bash 
-$ rails new . --api -d postgresql -T # Runs 'bundle install' as the last step
+$ rails new . --api -d postgresql -T
 ```
-*Note:* The period after "new" indicates that the application is to be created in the current directory.
+To use MySQL as the database server:
+```bash 
+$ rails new . --api -d mysql -T
+```
+If you get the error "Could not find gem 'mysql2 (>= 0.4.4, < 0.6.0)' ...", execute `bundle install`, then continue with next steps.
+
+*Note 1:* The period after "new" indicates that the application is to be created in the current directory.
+*Note 2:* 'rails new' runs 'bundle install' as the last step
 
 ***Set Up the App for Postgres***  
-Add to database.yml under the  
+Add to database.yml within the  
 `default: &default`  
 section, used by all environments:
 ```bash 
@@ -58,7 +68,8 @@ host: localhost # Otherwise get : FATAL: Peer authentication failed for user "ra
 ```  
 
 ***Create the Rails User in Postgres***  
-*Note:* In the below commands, '#' represents the Postgres client prompt 
+Perform this only if not previously done.   
+_Note:_ In the below commands, '#' represents the Postgres client prompt 
 ```bash 
 $ sudo -u postgres createuser -s rails_user 
 $ sudo -u postgres psql # Enter Postgres client
@@ -67,6 +78,32 @@ Set password & confirmation at prompt as 'rails_user_pwd'
 # \q
 ```
 
+***Set Up the App for MySQL***  
+Add to database.yml under the  
+`default: &default`  
+section, used by all environments:
+```bash 
+username: rails_user # otherwise rails looks for the user name of the currently logged in user
+password: rails_user_pwd
+host: localhost # Otherwise get : FATAL: Peer authentication failed for user "rails_user"
+```  
+_Note:_ Change the username & password to whatever user you have previously created for the rails app
+
+***Create the Rails User in MySQL***  
+Perform this and the subsequent step only if not previously done.   
+_Note:_ In the below commands, 'mysql>' represents the MySQL client prompt 
+```bash 
+$ sudo mysql # Enter the MySQL client as the root user - 'sudo' is required
+mysql> CREATE USER 'rails_user'@'localhost'IDENTIFIED WITH mysql_native_password BY 'rails_user_pwd';
+-- Select your own values for 'rails_user' and 'rails_user_pwd'
+```
+***Grant Privileges and Create Development Database***  
+`rails_user` needs privileges to be able to do anything. Additionally, the development database needs be created before running `rails db:migrate`
+```bash 
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'rails_user'@'localhost';
+mysql> CREATE DATABASE IF NOT EXISTS `contacts-api-service_development`; # Note the backtick quotes
+exit # from MySQL to command line
+```
 ***Create a Git Repository and Perform the First Commit***  
 Now that the basic structure of the app has been created, create a Git repository for the project and make the first commit. 
 
@@ -77,7 +114,7 @@ $ git commit -m "Initial commit of rails app structure"
 ```
 You will likely want to push this repo to a Git repository hosting service such as Github, Bitbucket, or GitLab. However, we do not cover this here.
 
-*Note:* If you ever need to start over, simply do a git reset specifying the id of this first commit:
+_Note:_ If you ever need to start over, simply do a 'hard' git reset specifying the id of this first commit:
 ```bash
 $ git reset --hard <commit id of first commit>
 ```
@@ -131,7 +168,10 @@ Rails.application.routes.draw do
 end
 ```
 
-We will further modify these routes when we deal with subdomains and versioning, but this will do for now.
+We will further modify these routes when we deal with subdomains and versioning, but this will do for now.  
+_Note:_ It should be possible to directly generate name-spaced resources using the scaffold generator,  
+e.g. **`rails generate scaffold Api::V1::Contact ...`**.  
+However, I encountered some problems with this. Manually making the namespace chnges is also more instructive.
 
 ***Create Special Controller Index Methods for Smoketest***  
 For the purpose of performing a fairly simple application smoketest, replace the index method of contacts_controller.rb with the following: 
@@ -149,7 +189,7 @@ For the purpose of performing a fairly simple application smoketest, replace the
 Do something similar for notes_controller.rb if you wish.
 
 ***Run Database Migrations***  
-The generators for contacts and notes created several "migration" files in db/migrate that set up the DB tables. Although the smoke tests performed here don't actually connect to the database, we still need to run these migrations to create the tables:  
+The generators for contacts and notes created several "migration" files in db/migrate that set up the DB tables. Although the smoke tests performed here don't actually read from the database, we still need to run these migrations to create the tables:  
 
 ```bash
 $ rails db:migrate
@@ -193,7 +233,7 @@ end
 
 ***Create Seeded Data For Testing the API***  
 The file db/seeds.rb is used to create test data and store it in the database. It is initially empty except for some comments. 
-**&ndash;** Replace it with the following code that creates two contacts records, each with two associated notes records:
+speciallyReplace it with the following code that creates two contacts records, each with two associated notes records:
 
 ```ruby 
   contact = Contact.create(first_name: "Abraham", last_name: "Lincoln", 
@@ -206,13 +246,13 @@ The file db/seeds.rb is used to create test data and store it in the database. I
   contact.notes.create(note_date: "2018-2-1", content: "Note to Herbert")
   contact.notes.create(note_date: "2018-2-2", content: "Second Note to Herbert")
 ```  
-*Note:* The Faker gem is often used to create seed data for testing. I avoid it because it is not repeatable &ndash; the data values it produces are different for each run.
+_Note:_ The Faker gem is often used to create seed data for testing. I avoid it because it is not repeatable &ndash; the data values it produces are different for each run.
 
 ***Create, Migrate &amp; Seed the Database***  
 Create the database with the contacts and notes tables containing the data defined in seeds.rb:  
 ```bash
 $ rails db:drop # If DB exists and you want to start over
-$ rails db:create
+$ rails db:create # both development and test dbs are created
 $ rails db:migrate 
 $ rails db:seed 
 ```  
@@ -223,7 +263,7 @@ In the previous section we rendered fake data without interacting with the datab
 **&ndash;** Replace the index action of contacts_controller.rb with the following:  
 ```ruby
 def index
-  @contacts = Contact.order('last_name, first name')  
+  @contacts = Contact.order('last_name, first_name')  
   render json: @contacts
 end
 ```  
@@ -245,7 +285,7 @@ The show action as generated needs no change:
 ```  
 The show action will raise an exception if the requested contact is not found. We'll handle that later.
 
-*Note:* @contact is set by set_contact() at the bottom of the file.
+_Note:_ @contact is set by set_contact() at the bottom of the file.
 
 ***Render Json Data From the Database***  
 Now let's test this, using curl, a command line program that sends a url over the internet and outputs the resulting response.
@@ -282,7 +322,7 @@ $ curl http://localhost:3000/api/v1/notes/1
 {"id":1,"note_date":"2017-12-01T00:00:00.000Z","content":"Note to Abraham","contact_id":1,
   "created_at":"2017-08-29T06:09:17.696Z","updated_at":"2017-08-29T06:09:17.696Z"}
 ```  
-*Note:* This output is not in an accepted JSON format. We'll fix that shortly. Also, we describe only the index and show actions to concentrate on the core features. The new, create, update, and destroy actions are implemented later.
+_Note:_ This output is not in an accepted JSON format. We'll fix that shortly. Also, we describe only the index and show actions to concentrate on the core features. The new, create, update, and destroy actions are implemented later.
 
 At this time perform a third commit with the message "Connect to database".
 
@@ -307,7 +347,7 @@ $ bundle
 ```
 
 ***Create serializers for the Contact and Note controllers***  
- While there are generators that could create these classes for us (e.g. **`$ rails g serializer contact`**), it is simpler to specially create them given the customization necessary.
+ While there are generators that could create these classes for us (e.g. **`$ rails g serializer contact`**), it is simpler to manually create them given the customization necessary.
 
 **&ndash;** Create the serializer subdirectory parallel to that for the namespaced controllers (app/controllers/api/v1/)
 ```bash
@@ -466,7 +506,7 @@ Finally, we need a way to distinguish between the output of the version 1 and ve
 **&ndash;** Remove the :email attribute from the attributes method in app/serializers/api/v2/contact_serializer.rb so that it reads:
 ```ruby
   class Api::V2::ContactSerializer < ActiveModel::Serializer
-    attributes :id, :first_name, :last_name, :email
+    attributes :id, :first_name, :last_name
   end
 ```
 That's it.
@@ -501,13 +541,13 @@ _Note:_ The email field is not included.
 ```bash
 $ curl -H 'Accept: application/vnd.contacts.v3' http://localhost:3000/api/contacts/1
 ```
-The request sends back an HTML formatted error message instead of a concise JSON error. We will fix that below.
+The request raises the error `ActionController::RoutingError (No route matches [GET] "/api/contacts/1")`, which is written to the console output and to the log file. What we instead want is for the request to return a concise JSON error. We will fix that below.
 
 At this time perform a fifth commit with the message "Add Api Versioning Using Request Headers"
 
 
 ## Sixth Commit &ndash; Error Handling
-When we sent a request to a non-existant api version, the json request returned verbose html describing the error. This is appropriate for an html format request sent from a browser, but not a json request response. Let's fix that now.
+When we sent a request to a non-existant api version, the json request raised an `ActionController::RoutingError` instead of a json response specifying the error. Let's fix that now.
 
 **&ndash;** Insert a **`match '*unknown_path'`** method into config/routes.rb, so that the file reads as follows:
 
@@ -655,7 +695,8 @@ _Note:_ The following line is logged in the case of errors and other situations 
   **`[active_model_serializers] Rendered ActiveModel::Serializer::Null with Hash`**  
 This is not an error indication, and to suppress it is more trouble than it's worth.
 
-At this time perform a sixth commit with the message "Add Error Handling"
+Now remove the "test_internal_server_error()" we just added to Api::V1::ContactsController#show.
+Then perform a sixth commit with the message "Add Error Handling"
 
 
 ## Seventh Commit &ndash; Accessing the Api Through a Subdomain
@@ -752,9 +793,7 @@ Replace the create method with the following:
 
 ***Create Action &ndash; Process POST Request***  
 ```bash
-$ curl -H "Content-Type: application/json" -X POST -d '{"contact":
-  {"first_name":"George", "last_name":"Washington", "email":"george_washington@example.com"}}'
-   http://api.lvh.me:3000/contacts 
+$ curl -H "Content-Type: application/json" -X POST -d '{"contact": {"first_name":"George", "last_name":"Washington", "email":"george_washington@example.com"}}' http://api.lvh.me:3000/contacts 
    -->
 {"contact":{"id":3,"first_name":"George","last_name":"Washington",
   "email":"george_washington@example.com"}}
@@ -781,13 +820,12 @@ Replace the update method with the following:
 
 ***Update Action - Process PUT Request***  
 ```bash
-$ curl -H "Content-Type: application/json" -X PUT -d '{"contact":{"last_name":"Bush", 
-  "email":"george_bush@example.com"}}' http://api.lvh.me:3000/contacts/3 
+$ curl -H "Content-Type: application/json" -X PUT -d '{"contact":{"last_name":"Bush", "email":"george_bush@example.com"}}' http://api.lvh.me:3000/contacts/3 
 -->
 {"contact":{"id":3,"first_name":"George","last_name":"Bush","email":"george_bush@example.com"}}
 ```
 
-Note: The Update action serves both the PUT and PATCH requests, so if "PUT" is replaced by "PATCH" in the above command, the result is identical. All fields in the request replace existing values in the record, but fields not updated by the request retain their existing values.
+_Note:_ The Update action serves both the PUT and PATCH requests, so if "PUT" is replaced by "PATCH" in the above command, the result is identical. All fields in the request replace existing values in the record, but fields not updated by the request retain their existing values.
 
 ### Destroy Action
 No change to the existing destroy method is required:
@@ -803,7 +841,7 @@ $ curl -i -X DELETE http://api.lvh.me:3000/contacts/3
 ```  
 Outputs a **`HTTP/1.1 204 No Content`** header, but no json output.
 
-Note: The above is a non-"idempotent" implementation of destroy(). Send a DELETE request to a resource and it is gone; send the same request to a now non-existant resource, and a "not found" response is returned:
+_Note:_ The above is a non-"idempotent" implementation of destroy(). Send a DELETE request to a resource and it is gone; send the same request to a now non-existant resource, and a "not found" response is returned:
 ```bash
 $ curl -X DELETE http://api.lvh.me:3000/contacts/3  
 -->
@@ -869,7 +907,7 @@ class Api::V1::NotesController < ApplicationController
     end
 end
 ```
-`
+
 ### Curl Commands that Exercise the Notes Controller
 ```bash
 $ curl http://api.lvh.me:3000/notes 
@@ -887,15 +925,13 @@ $ curl http://api.lvh.me:3000/notes/1
 ```
 
 ```bash
-$ curl -H "Content-Type: application/json" -X POST -d '{"note":{"contact_id":"1", 
-  "note_date":"2017-12-01", "content":"Third Note to Abraham"}}' http://api.lvh.me:3000/notes 
+$ curl -H "Content-Type: application/json" -X POST -d '{"note":{"contact_id":"1", "note_date":"2017-12-01", "content":"Third Note to Abraham"}}' http://api.lvh.me:3000/notes 
 -->
 {"note":{"id":5,"note_date":"2017-12-01T00:00:00.000Z","content":"Third Note to Abraham"}}
 ```
 
 ```bash
-$ curl -H "Content-Type: application/json" -X PUT -d 
-  '{"note":{"content":"Third Note to President Lincoln"}}' http://api.lvh.me:3000/notes/5 
+$ curl -H "Content-Type: application/json" -X PUT -d '{"note":{"content":"Third Note to President Lincoln"}}' http://api.lvh.me:3000/notes/5 
 -->
 {"note":{"id":5,"note_date":"2017-12-01T00:00:00.000Z","content":"Third Note to President Lincoln"}}
 ```
@@ -939,8 +975,7 @@ At this time perform a eighth commit with the message "Implement all API Actions
 ***A POST Request That Causes a Validation Failure***  
 In the Error Handling section above, we implemented validation error handling. However, we were not prepared to demonstrate it until we implemented the Create action and added a validation to the Contact model. Let's test it now.  
 ```bash
-$ curl -i -H "Content-Type: application/json" -X POST -d '{"contact":{ "last_name":"Eisenhower", 
-  "email":"dwight_eisenhower@example.com"}}' http://api.lvh.me:3000/contacts 
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"contact":{ "last_name":"Eisenhower", "email":"dwight_eisenhower@example.com"}}' http://api.lvh.me:3000/contacts 
 -->
 {"error":"Validation failed: First name can't be blank"}  
 ```  
@@ -951,11 +986,10 @@ This is an example of how the JSON API reports validation errors. Although valid
 ***A POST Request That Causes a Parse Failure***  
 The data in the following POST request omits one of two closing braces "}" after ".com"
 ```bash
-$ curl -i -H "Content-Type: application/json" -X POST -d '{"contact":{ "first_name":"Dwight", 
-  "last_name":"Eisenhower", "email":"dwight_eisenhower@example.com"}' http://api.lvh.me:3000/contacts 
+$ curl -i -H "Content-Type: application/json" -X POST -d '{"contact":{ "first_name":"Dwight", "last_name":"Eisenhower", "email":"dwight_eisenhower@example.com"}' http://api.lvh.me:3000/contacts 
 ```
 The error is rendered as a voluminous HTML error message, something we thought we had fixed with the error handling code we implemented above. 
- The reason is that JSON parsing is performed at the middleware level before the error handling code is activated.  
+The reason is that JSON parsing is performed at the middleware level before the error handling code is activated.  
 So we must add separate code at the middleware level to be able to catch a JSON parse error and render a concise error message.  
  
 **&ndash;** Create a new subdirectory 'app/middleware' and create a new file catch_json_parse_errors.rb therein with these contents:  
@@ -1003,7 +1037,7 @@ $ curl -H "Content-Type: application/json" -X POST -d '{"contact":{ "first_name"
   \"last_name\":\"Eisenhower\", \"email\":\"dwight_eisenhower@example.com\"}'"}%
 ```
 
-At this time perform a ninth commit with the message "More Error Handling"
+At this time perform a ninth commit with the message "More Error Handling".
 
 That's all for now, folks. I hope to be able to add more topics to this tutorial in the future. 
 
@@ -1120,6 +1154,8 @@ Rescuing from StandardError, not Exception.
 Comments and/or corrections are welcome. Please contact me at **`edwin@edwinmeyer.com`**.
 
 ## Licensing
-All code in the accompanying code repository is licensed under the terms of the MIT License, and any part may be freely incorporated into any software without charge or attribution.
+All code in the accompanying code repository is licensed under the terms of the MIT License, and any part may be freely incorporated into any software without charge or attribution.  
   
-This README text is copyright &copy; 2017 Edwin Meyer Software Engineering. However it may be reproduced in whole without modification other than reformatting if the copyright legend is included.
+This README text is copyright &copy; 2017-2019 Edwin Meyer Software Engineering. 
+However it may be reproduced in whole or in part if the copyright legend is included.  
+_Note:_ Some code or text upon which this README is based may have different licensing terms.
